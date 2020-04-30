@@ -1,0 +1,18 @@
+{:deps     {:aliases [:dev]}
+ :dev-http {8000 "classpath:public"}
+ :builds   {:main       {:target     :browser
+                         :output-dir "resources/public/main/js"
+                         :asset-path "/js"
+                         :modules    {:main {:init-fn todoapp.main.client/init
+                                             :entries [todoapp.main.client]}}
+                         :devtools   {:after-load todoapp.main.client/refresh
+                                      :preloads   [com.fulcrologic.fulcro.inspect.preload]
+                                      :http-root  "resources/public/main"
+                                      :http-port  8090}}
+            :cards      {:target     nubank.workspaces.shadow-cljs.target
+                         :ns-regexp  "-(test|cards)$"
+                         :output-dir "resources/public/workspaces/js"
+                         :asset-path "/js"
+                         :devtools   {:http-root "resources/public/workspaces"
+                                      :http-port 3689}}}}
+
