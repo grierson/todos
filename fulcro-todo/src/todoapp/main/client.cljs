@@ -15,14 +15,15 @@
 (def ui-header (comp/factory Header))
 
 (defsc TodoItem [this {:item/keys [label completed?]}]
-  {:query                    [:item/id :item/label :item/completed?]
-   :ident                    [:item/id :item/id]
-   :initial-state            {:item/id (random-uuid)
-                              :item/label :param/label
-                              :item/completed? false}}
+  {:query         [:item/id :item/label :item/completed?]
+   :ident         [:item/id :item/id]
+   :initial-state {:item/id         (random-uuid)
+                   :item/label      :param/label
+                   :item/completed? :param/completed?}}
   (dom/li
     (dom/div :.view
-             (dom/input :.toggle {:type "input" :checked completed?})
+             (dom/input :.toggle {:type    "checkbox"
+                                  :checked completed?})
              (dom/label label)
              (dom/button :.destroy))
     (dom/form
@@ -31,17 +32,12 @@
 (def ui-todoitem (comp/factory TodoItem))
 
 (defsc Main [this {:list/keys [items]}]
-  {:query         [:list/id {:list/items (comp/get-query TodoItem)}]
-   :ident         [:list/id :list/id]
-   :initial-state (fn [_]
-                    {:list/id    1
-                     :list/items (mapv
-                                   #(comp/get-initial-state TodoItem {:label (str "a" %)
-                                                                      :completed? true})
-                                   (range 1 10))})}
+  {:query [:list/id {:list/items (comp/get-query TodoItem)}]
+   :ident [:list/id :list/id]}
   (dom/section :.main
-               (dom/input :.toggle-all {:type "checkbox"})
-               (dom/label :.toggle-all "Mark all as complete")
+               (dom/input :.toggle-all {:id :toggle-all
+                                        :type "checkbox"})
+               (dom/label {:for :toggle-all} "Mark all as complete")
                (dom/ul :.todo-list (map ui-todoitem items))))
 
 (def ui-main (comp/factory Main))

@@ -1,0 +1,5 @@
+.cpcache/
+.idea/
+.shadow-cljs/
+node_modules/
+js/

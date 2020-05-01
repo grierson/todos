@@ -1,5 +1,4 @@
 {:deps     {:aliases [:dev]}
- :dev-http {8000 "classpath:public"}
  :builds   {:main       {:target     :browser
                          :output-dir "resources/public/main/js"
                          :asset-path "/js"
@@ -14,5 +13,6 @@
                          :output-dir "resources/public/workspaces/js"
                          :asset-path "/js"
                          :devtools   {:http-root "resources/public/workspaces"
+                                      :preloads   [com.fulcrologic.fulcro.inspect.preload]
                                       :http-port 3689}}}}
 
