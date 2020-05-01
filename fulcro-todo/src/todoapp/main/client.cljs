@@ -10,37 +10,37 @@
   (dom/header :.header
               (dom/h1 "todo")
               (dom/form :.todo-form
-                        (dom/input :.new-todo {:placeholder "What needs to be done?"}))))
+                        (dom/input :.new-todo {:placeholder "What needs to be done?"
+                                               :autoFocus   true}))))
 
 (def ui-header (comp/factory Header))
 
-(defsc TodoItem [this {:item/keys [label completed?]}]
-  {:query         [:item/id :item/label :item/completed?]
-   :ident         [:item/id :item/id]
-   :initial-state {:item/id         (random-uuid)
-                   :item/label      :param/label
-                   :item/completed? :param/completed?}}
-  (dom/li
-    (dom/div :.view
-             (dom/input :.toggle {:type    "checkbox"
-                                  :checked completed?})
-             (dom/label label)
-             (dom/button :.destroy))
-    (dom/form
-      (dom/input :.edit))))
+(defsc TodoItem [this {:item/keys [id label completed?]}]
+  {:query [:item/id :item/label :item/completed?]
+   :ident :item/id}
+  (dom/li {:classes [(when completed? (str "completed"))]}
+          (dom/div :.view {}
+                   (dom/input {:type      "checkbox"
+                               :className "toggle"
+                               :checked   completed?})
+                   (dom/label label)
+                   (dom/button :.destroy))
+          (dom/form
+            (dom/input :.edit))))
 
-(def ui-todoitem (comp/factory TodoItem))
+(def ui-todoitem (comp/computed-factory TodoItem {:keyfn :item/id}))
 
-(defsc Main [this {:list/keys [items]}]
+(defsc TodoList [this {:list/keys [items]}]
   {:query [:list/id {:list/items (comp/get-query TodoItem)}]
-   :ident [:list/id :list/id]}
+   :ident :list/id}
   (dom/section :.main
-               (dom/input :.toggle-all {:id :toggle-all
-                                        :type "checkbox"})
-               (dom/label {:for :toggle-all} "Mark all as complete")
-               (dom/ul :.todo-list (map ui-todoitem items))))
+               (dom/input {:id        :toggle-all
+                           :className "toggle-all"
+                           :type      "checkbox"})
+               (dom/label {:htmlFor "toggle-all"} "Mark all as complete")
+               (dom/ul :.todo-list {} (map ui-todoitem items))))
 
-(def ui-main (comp/factory Main))
+(def ui-todolist (comp/factory TodoList))
 
 (defsc Footer [this props]
   (dom/footer :.footer
@@ -60,13 +60,14 @@
 
 (def ui-pagefooter (comp/factory PageFooter))
 
-(defsc Root [this {:keys [list]}]
-  {:query         [{:list (comp/get-query Main)}]
-   :initial-state {:list {}}}
+(defsc Root [this {:keys [todos]}]
+  {:query [{:todos (comp/get-query TodoList)}]
+   :initial-state {:todos [{:item/id 1 :item/label "hello" :item/completed? true}
+                           {:item/id 2 :item/label "world" :item/completed? false}]}}
   (dom/div
     (dom/section :.todoapp
                  (ui-header)
-                 (ui-main list)
+                 (ui-todolist todos)
                  (ui-footer))
     (ui-pagefooter)))
 

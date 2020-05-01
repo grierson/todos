@@ -7,11 +7,11 @@
 
 (ws/defcard todoitem-toggle-done-card
             (ct.fulcro/fulcro-card
-              {::ct.fulcro/root          client/Main
+              {::ct.fulcro/root client/TodoList
                ::ct.fulcro/initial-state
-               {:list/id    1
-                :list/items [(comp/get-initial-state client/TodoItem {:label      "a"
-                                                                      :completed? true})
-                             (comp/get-initial-state client/TodoItem {:label      "b"
-                                                                      :completed? false})]}}))
+                                {:list/id    1
+                                 :list/items [(comp/get-initial-state client/TodoItem {:label      "a"
+                                                                                       :completed? true})
+                                              (comp/get-initial-state client/TodoItem {:label      "b"
+                                                                                       :completed? false})]}}))
 
