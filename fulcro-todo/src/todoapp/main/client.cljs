@@ -15,7 +15,7 @@
 
 (def ui-header (comp/factory Header))
 
-(defsc TodoItem [this {:item/keys [id label completed?]}]
+(defsc TodoItem [this {:item/keys [label completed?]}]
   {:query [:item/id :item/label :item/completed?]
    :ident :item/id}
   (dom/li {:classes [(when completed? (str "completed"))]}
@@ -31,8 +31,8 @@
 (def ui-todoitem (comp/computed-factory TodoItem {:keyfn :item/id}))
 
 (defsc TodoList [this {:list/keys [items]}]
-  {:query [:list/id {:list/items (comp/get-query TodoItem)}]
-   :ident :list/id}
+  {:ident :list/id
+   :query [:list/id {:list/items (comp/get-query TodoItem)}]}
   (dom/section :.main
                (dom/input {:id        :toggle-all
                            :className "toggle-all"
@@ -60,16 +60,18 @@
 
 (def ui-pagefooter (comp/factory PageFooter))
 
-(defsc Root [this {:keys [todos]}]
-  {:query [{:todos (comp/get-query TodoList)}]
-   :initial-state {:todos [{:item/id 1 :item/label "hello" :item/completed? true}
-                           {:item/id 2 :item/label "world" :item/completed? false}]}}
+(defsc Root [this {:keys [list]}]
+  {:query [{:list (comp/get-query TodoList)}]}
   (dom/div
     (dom/section :.todoapp
                  (ui-header)
-                 (ui-todolist todos)
+                 (ui-todolist list)
                  (ui-footer))
     (ui-pagefooter)))
+
+(comment
+  (comp/get-initial-state Root {})
+  (comp/get-query Root))
 
 (defn ^:export init
   "Shadow-cljs sets this up to be our entry-point function. See shadow-cljs.edn `:init-fn` in the modules of the main build."
