@@ -3,31 +3,32 @@
     [com.fulcrologic.fulcro.application :as app]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
     [com.fulcrologic.fulcro.dom :as dom]
+    [com.fulcrologic.fulcro.dom.events :as events]
     [com.fulcrologic.fulcro.algorithms.tempid :as tmp]
     [com.fulcrologic.fulcro.algorithms.denormalize :as fdn]
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
-    [com.fulcrologic.fulcro.mutations :as m :refer [defmutation]]))
+    [com.fulcrologic.fulcro.mutations :as mut :refer [defmutation]]))
 
 (defonce app (app/fulcro-app))
 
-(defn is-enter? [evt] (= 13 (.-keyCode evt)))
-(defn is-escape? [evt] (= 27 (.-keyCode evt)))
-
 (defn add-item-to-list*
   "Add an item's ident onto the end of the given list."
-  [state list-id item-id]
+  [state item-id list-id]
   (update-in state [:list/id list-id :list/items] (fnil conj []) [:item/id item-id]))
 
 (defn create-item*
   "Create a new todo item and insert it into the todo item table."
   [state id text]
-  (assoc-in state [:item/id id] {:item/id id :item/label text :item/completed? false}))
+  (assoc-in state [:item/id id] {:item/id         id
+                                 :item/label      text
+                                 :item/completed? false}))
 
-(defmutation todo-new-item [{:keys [list-id id text]}]
+(defmutation todo-new-item [{:keys [list-id text]}]
   (action [{:keys [state]}]
-          (swap! state #(-> %
-                            (create-item* id text)
-                            (add-item-to-list* list-id id)))))
+          (let [id (tmp/tempid)]
+            (swap! state #(-> %
+                              (create-item* id text)
+                              (add-item-to-list* id list-id))))))
 
 (defn trim-text [text]
   "Returns text without surrounding whitespace if not empty, otherwise nil"
@@ -36,17 +37,20 @@
       trimmed-text)))
 
 (defn header [component]
-  (let [{:list/keys [id]} (comp/props component)]
+  (let [{:list/keys [id]
+         :ui/keys   [new-item-text] :as props} (comp/props component)]
+    (js/console.log props)
     (dom/header :.header
                 (dom/h1 "todo")
-                (dom/input {:placeholder "What needs to be done?"
+                (dom/input {:value       (or new-item-text "")
+                            :placeholder "What needs to be done?"
                             :className   "new-todo"
-                            :onKeyDown   (fn [evt]
-                                           (when (is-enter? evt)
-                                             (when-let [trimmed-text (trim-text (.. evt -target -value))]
-                                               (comp/transact! component `[(todo-new-item ~{:list-id id
-                                                                                            :id      (tmp/tempid)
-                                                                                            :text    trimmed-text})]))))
+                            :onChange    (fn [evt] (mut/set-string! component :ui/new-item-text :event evt))
+                            :onKeyDown   (fn [event]
+                                           (when (events/enter? event)
+                                             (when-let [trimmed-text (trim-text (events/target-value event))]
+                                               (comp/transact! component [(todo-new-item {:list-id id
+                                                                                          :text    trimmed-text})]))))
                             :autoFocus   true}))))
 
 (defn footer []
@@ -71,10 +75,10 @@
 
 (def ui-todoitem (comp/computed-factory TodoItem {:keyfn :item/id}))
 
-(defsc TodoList [this {:list/keys [id label items]}]
-  {:query         [:list/id :list/label {:list/items (comp/get-query TodoItem)}]
+(defsc TodoList [this {:list/keys [items]}]
+  {:query         [:list/id :list/label :list/new-item {:list/items (comp/get-query TodoItem)}]
    :ident         :list/id
-   :initial-state (fn [_] {:list/id 1 :list/label "shopping" :list/items []})}
+   :initial-state (fn [_] {:list/id 1 :list/label "shopping" :list/items [] :ui/new-item-text ""})}
   (dom/div {}
            (header this)
            (dom/section :.main
@@ -92,11 +96,11 @@
               (dom/p "Double-click to edit a todo")
               (dom/p "Part of " (dom/a {:href "http://todomvc.com"} "TodoMVC"))))
 
-(defsc Root [this {:keys [main]}]
+(defsc Root [this {:keys [main] :as props}]
   {:query         [{:main (comp/get-query TodoList)}]
    :initial-state (fn [_] {:main (comp/get-initial-state TodoList {})})}
   (dom/div {}
-           (dom/section :.todoapp (ui-todolist list))
+           (dom/section :.todoapp (ui-todolist main))
            (page-footer)))
 
 (comment
@@ -106,7 +110,7 @@
                           TodoList {:list/id 1 :list/label "shopping" :list/items [{:item/id         1
                                                                                     :item/label      "buy milk"
                                                                                     :item/completed? false}]}
-                          :replace [:root/list]))
+                          :replace [:main]))
 
 (defn ^:export init
   "Shadow-cljs sets this up to be our entry-point function. See shadow-cljs.edn `:init-fn` in the modules of the main build."
