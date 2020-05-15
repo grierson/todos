@@ -7,6 +7,7 @@
     [com.fulcrologic.fulcro.algorithms.tempid :as tmp]
     [com.fulcrologic.fulcro.algorithms.denormalize :as fdn]
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
+    [com.fulcrologic.fulcro.algorithms.normalized-state :as norm]
     [com.fulcrologic.fulcro.mutations :as mut :refer [defmutation]]))
 
 (defonce app (app/fulcro-app))
@@ -28,7 +29,7 @@
                                  :item/label      text
                                  :item/completed? false}))
 
-(defmutation todo-new-item [{:keys [list-id text]}]
+(defmutation new-item [{:keys [list-id text]}]
   (action [{:keys [state]}]
           (let [id (tmp/tempid)]
             (swap! state #(-> %
@@ -41,6 +42,13 @@
   [{:keys [id]}]
   (action [{:keys [state]}]
           (swap! state update-in [:item/id id :item/completed?] not)))
+
+
+(defmutation delete-item [{:keys [list-id id]}]
+  (action [{:keys [state]}]
+          (swap! state (fn [s] (-> s
+                                 (norm/remove-ident [:item/id id] [:list/id list-id :list/items])
+                                 (update :item/id dissoc id))))))
 
 (defn trim-text [text]
   "Returns text without surrounding whitespace if not empty, otherwise nil"
@@ -60,8 +68,8 @@
                             :onKeyDown   (fn [event]
                                            (when (events/enter? event)
                                              (when-let [trimmed-text (trim-text (events/target-value event))]
-                                               (comp/transact! component [(todo-new-item {:list-id id
-                                                                                          :text    trimmed-text})]))))
+                                               (comp/transact! component [(new-item {:list-id id
+                                                                                     :text    trimmed-text})]))))
                             :autoFocus   true}))))
 
 (defn footer []
@@ -73,7 +81,7 @@
                       (dom/li (dom/a {:href "#/completed"} "Completed")))
               (dom/button :.clear-completed "Clear completed")))
 
-(defsc TodoItem [this {:item/keys [id label completed?]}]
+(defsc TodoItem [this {:item/keys [id label completed?]} {:keys [delete-item]}]
   {:query [:item/id :item/label :item/completed?]
    :ident :item/id}
   (dom/li {:classes [(when completed? (str "completed"))]}
@@ -83,23 +91,25 @@
                                :onChange  (fn [_] (comp/transact! this [(toggle-item {:id id})]))
                                :checked   completed?})
                    (dom/label label)
-                   (dom/button :.destroy))))
+                   (dom/button :.destroy {:onClick #(delete-item id)}))))
 
 (def ui-todoitem (comp/computed-factory TodoItem {:keyfn :item/id}))
 
-(defsc TodoList [this {:list/keys [items]}]
+(defsc TodoList [this {:list/keys [id items]}]
   {:query         [:list/id :list/label :list/new-item {:list/items (comp/get-query TodoItem)}]
    :ident         :list/id
    :initial-state (fn [_] {:list/id 1 :list/label "shopping" :list/items [] :ui/new-item-text ""})}
-  (dom/div {}
-           (header this)
-           (dom/section :.main
-                        (dom/input {:id        :toggle-all
-                                    :className "toggle-all"
-                                    :type      "checkbox"})
-                        (dom/label {:htmlFor "toggle-all"} "Mark all as complete")
-                        (dom/ul :.todo-list {} (map ui-todoitem items)))
-           (footer)))
+  (let [delete-item (fn [item-id] (comp/transact! this [(delete-item {:list-id id
+                                                                      :id      item-id})]))]
+    (dom/div {}
+             (header this)
+             (dom/section :.main
+                          (dom/input {:id        :toggle-all
+                                      :className "toggle-all"
+                                      :type      "checkbox"})
+                          (dom/label {:htmlFor "toggle-all"} "Mark all as complete")
+                          (dom/ul :.todo-list {} (map #(ui-todoitem % {:delete-item delete-item}) items)))
+             (footer))))
 
 (def ui-todolist (comp/factory TodoList))
 
