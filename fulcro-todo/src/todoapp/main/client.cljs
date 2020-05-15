@@ -16,6 +16,11 @@
   [state item-id list-id]
   (update-in state [:list/id list-id :list/items] (fnil conj []) [:item/id item-id]))
 
+(defn clear-new-item-text*
+  "Clear input for new todo"
+  [state list-id]
+  (assoc-in state [:list/id list-id :ui/new-item-text] ""))
+
 (defn create-item*
   "Create a new todo item and insert it into the todo item table."
   [state id text]
@@ -28,7 +33,14 @@
           (let [id (tmp/tempid)]
             (swap! state #(-> %
                               (create-item* id text)
-                              (add-item-to-list* id list-id))))))
+                              (add-item-to-list* id list-id)
+                              (clear-new-item-text* list-id))))))
+
+(defmutation toggle-item
+  "Toggle item completed status"
+  [{:keys [id]}]
+  (action [{:keys [state]}]
+          (swap! state update-in [:item/id id :item/completed?] not)))
 
 (defn trim-text [text]
   "Returns text without surrounding whitespace if not empty, otherwise nil"
@@ -38,8 +50,7 @@
 
 (defn header [component]
   (let [{:list/keys [id]
-         :ui/keys   [new-item-text] :as props} (comp/props component)]
-    (js/console.log props)
+         :ui/keys   [new-item-text]} (comp/props component)]
     (dom/header :.header
                 (dom/h1 "todo")
                 (dom/input {:value       (or new-item-text "")
@@ -62,13 +73,14 @@
                       (dom/li (dom/a {:href "#/completed"} "Completed")))
               (dom/button :.clear-completed "Clear completed")))
 
-(defsc TodoItem [this {:item/keys [label completed?]}]
+(defsc TodoItem [this {:item/keys [id label completed?]}]
   {:query [:item/id :item/label :item/completed?]
    :ident :item/id}
   (dom/li {:classes [(when completed? (str "completed"))]}
           (dom/div :.view {}
                    (dom/input {:type      "checkbox"
                                :className "toggle"
+                               :onChange  (fn [_] (comp/transact! this [(toggle-item {:id id})]))
                                :checked   completed?})
                    (dom/label label)
                    (dom/button :.destroy))))
@@ -96,7 +108,7 @@
               (dom/p "Double-click to edit a todo")
               (dom/p "Part of " (dom/a {:href "http://todomvc.com"} "TodoMVC"))))
 
-(defsc Root [this {:keys [main] :as props}]
+(defsc Root [this {:keys [main]}]
   {:query         [{:main (comp/get-query TodoList)}]
    :initial-state (fn [_] {:main (comp/get-initial-state TodoList {})})}
   (dom/div {}
