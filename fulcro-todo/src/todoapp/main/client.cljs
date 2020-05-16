@@ -43,12 +43,18 @@
   (action [{:keys [state]}]
           (swap! state update-in [:item/id id :item/completed?] not)))
 
+(defmutation set-filter
+  "Toggle item completed status"
+  [{:keys [list-id filter]}]
+  (action [{:keys [state]}]
+          (swap! state assoc-in [:list/id list-id :list/filter] filter)))
+
 
 (defmutation delete-item [{:keys [list-id id]}]
   (action [{:keys [state]}]
           (swap! state (fn [s] (-> s
-                                 (norm/remove-ident [:item/id id] [:list/id list-id :list/items])
-                                 (update :item/id dissoc id))))))
+                                   (norm/remove-ident [:item/id id] [:list/id list-id :list/items])
+                                   (update :item/id dissoc id))))))
 
 (defn trim-text [text]
   "Returns text without surrounding whitespace if not empty, otherwise nil"
@@ -72,14 +78,21 @@
                                                                                      :text    trimmed-text})]))))
                             :autoFocus   true}))))
 
-(defn footer []
-  (dom/footer :.footer
-              (dom/span :.todo-count)
-              (dom/ul :.filters
-                      (dom/li (dom/a {:href "#/"} "All"))
-                      (dom/li (dom/a {:href "#/active"} "Active"))
-                      (dom/li (dom/a {:href "#/completed"} "Completed")))
-              (dom/button :.clear-completed "Clear completed")))
+(defn footer [component]
+  (let [{:list/keys [id]} (comp/props component)]
+    (dom/footer :.footer
+                (dom/span :.todo-count)
+                (dom/ul :.filters
+                        (dom/li (dom/a {:href    "#/"
+                                        :onClick #(comp/transact! component [(set-filter {:list-id id
+                                                                                          :filter  :list.filter/all})])} "All"))
+                        (dom/li (dom/a {:href    "#/active"
+                                        :onClick #(comp/transact! component [(set-filter {:list-id id
+                                                                                          :filter  :list.filter/active})])} "Active"))
+                        (dom/li (dom/a {:href    "#/completed"
+                                        :onClick #(comp/transact! component [(set-filter {:list-id id
+                                                                                          :filter  :list.filter/completed})])} "Completed")))
+                (dom/button :.clear-completed "Clear completed"))))
 
 (defsc TodoItem [this {:item/keys [id label completed?]} {:keys [delete-item]}]
   {:query [:item/id :item/label :item/completed?]
@@ -95,12 +108,18 @@
 
 (def ui-todoitem (comp/computed-factory TodoItem {:keyfn :item/id}))
 
-(defsc TodoList [this {:list/keys [id items]}]
-  {:query         [:list/id :list/label :list/new-item {:list/items (comp/get-query TodoItem)}]
+(defsc TodoList [this {:list/keys [id items filter]}]
+  {:query         [:list/id :list/label :list/new-item :list/filter {:list/items (comp/get-query TodoItem)}]
    :ident         :list/id
-   :initial-state (fn [_] {:list/id 1 :list/label "shopping" :list/items [] :ui/new-item-text ""})}
+   :initial-state (fn [_] {:list/id 1 :list/label "shopping" :list/items [] :ui/new-item-text "" :list/filter :list.filter/all})}
   (let [delete-item (fn [item-id] (comp/transact! this [(delete-item {:list-id id
-                                                                      :id      item-id})]))]
+                                                                      :id      item-id})]))
+        completed-items (filterv :item/completed? items)
+        filtered-items (case filter
+                         :list.filter/active (filterv (comp not :item/completed?) items)
+                         :list.filter/completed completed-items
+                         :list.filter/all items
+                         items)]
     (dom/div {}
              (header this)
              (dom/section :.main
@@ -108,8 +127,8 @@
                                       :className "toggle-all"
                                       :type      "checkbox"})
                           (dom/label {:htmlFor "toggle-all"} "Mark all as complete")
-                          (dom/ul :.todo-list {} (map #(ui-todoitem % {:delete-item delete-item}) items)))
-             (footer))))
+                          (dom/ul :.todo-list {} (map #(ui-todoitem % {:delete-item delete-item}) filtered-items)))
+             (footer this))))
 
 (def ui-todolist (comp/factory TodoList))
 
