@@ -29,32 +29,44 @@
                                  :item/label      text
                                  :item/completed? false}))
 
-(defmutation new-item [{:keys [list-id text]}]
+(defmutation new-item
+  "Add new item to list"
+  [{:keys [id text]}]
   (action [{:keys [state]}]
-          (let [id (tmp/tempid)]
+          (let [tempid (tmp/tempid)]
             (swap! state #(-> %
-                              (create-item* id text)
-                              (add-item-to-list* id list-id)
-                              (clear-new-item-text* list-id))))))
+                              (create-item* tempid text)
+                              (add-item-to-list* tempid id)
+                              (clear-new-item-text* id))))))
 
 (defmutation toggle-item
-  "Toggle item completed status"
+  "Toggle item to completed status"
   [{:keys [id]}]
   (action [{:keys [state]}]
           (swap! state update-in [:item/id id :item/completed?] not)))
 
 (defmutation set-filter
-  "Toggle item completed status"
+  "Toggle item to completed status"
   [{:keys [list-id filter]}]
   (action [{:keys [state]}]
           (swap! state assoc-in [:list/id list-id :list/filter] filter)))
 
 
-(defmutation delete-item [{:keys [list-id id]}]
+(defmutation delete-item
+  "Remove item from list"
+  [{:keys [list-id item-id]}]
   (action [{:keys [state]}]
           (swap! state (fn [s] (-> s
-                                   (norm/remove-ident [:item/id id] [:list/id list-id :list/items])
-                                   (update :item/id dissoc id))))))
+                                   (norm/remove-ident [:item/id item-id] [:list/id list-id :list/items])
+                                   (update :item/id dissoc item-id))))))
+
+(defmutation clear-completed
+  "Clear all completed"
+  [{:keys [id]}]
+  (action [{:keys [state]}]
+          (let [is-complete? (fn [item-ident] (get-in @state (conj item-ident :item/complete)))]
+            (swap! state update-in [:list/id id :list/items]
+                   (fn [todos] (vec (remove (fn [ident] (is-complete? ident)) todos)))))))
 
 (defn trim-text [text]
   "Returns text without surrounding whitespace if not empty, otherwise nil"
@@ -74,8 +86,8 @@
                             :onKeyDown   (fn [event]
                                            (when (events/enter? event)
                                              (when-let [trimmed-text (trim-text (events/target-value event))]
-                                               (comp/transact! component [(new-item {:list-id id
-                                                                                     :text    trimmed-text})]))))
+                                               (comp/transact! component [(new-item {:id   id
+                                                                                     :text trimmed-text})]))))
                             :autoFocus   true}))))
 
 (defn footer [component]
@@ -92,7 +104,8 @@
                         (dom/li (dom/a {:href    "#/completed"
                                         :onClick #(comp/transact! component [(set-filter {:list-id id
                                                                                           :filter  :list.filter/completed})])} "Completed")))
-                (dom/button :.clear-completed "Clear completed"))))
+                (dom/button {:className "clear-completed"
+                             :onClick   #(comp/transact! component [(clear-completed {:id id})])} "Clear completed"))))
 
 (defsc TodoItem [this {:item/keys [id label completed?]} {:keys [delete-item]}]
   {:query [:item/id :item/label :item/completed?]
@@ -113,7 +126,7 @@
    :ident         :list/id
    :initial-state (fn [_] {:list/id 1 :list/label "shopping" :list/items [] :ui/new-item-text "" :list/filter :list.filter/all})}
   (let [delete-item (fn [item-id] (comp/transact! this [(delete-item {:list-id id
-                                                                      :id      item-id})]))
+                                                                      :item-id item-id})]))
         completed-items (filterv :item/completed? items)
         filtered-items (case filter
                          :list.filter/active (filterv (comp not :item/completed?) items)
