@@ -64,9 +64,8 @@
   "Clear all completed"
   [{:keys [id]}]
   (action [{:keys [state]}]
-          (let [is-complete? (fn [item-ident] (get-in @state (conj item-ident :item/complete)))]
-            (swap! state update-in [:list/id id :list/items]
-                   (fn [todos] (vec (remove (fn [ident] (is-complete? ident)) todos)))))))
+          (let [is-complete? (fn [item-ident] (get-in @state (conj item-ident :item/completed?)))]
+            (swap! state update-in [:list/id id :list/items] (fn [todos] (vec (remove is-complete? todos)))))))
 
 (defn trim-text [text]
   "Returns text without surrounding whitespace if not empty, otherwise nil"
@@ -124,7 +123,11 @@
 (defsc TodoList [this {:list/keys [id items filter]}]
   {:query         [:list/id :list/label :list/new-item :list/filter {:list/items (comp/get-query TodoItem)}]
    :ident         :list/id
-   :initial-state (fn [_] {:list/id 1 :list/label "shopping" :list/items [] :ui/new-item-text "" :list/filter :list.filter/all})}
+   :initial-state (fn [_] {:list/id 1
+                           :list/label "shopping"
+                           :list/items []
+                           :list/filter :list.filter/all
+                           :ui/new-item-text ""})}
   (let [delete-item (fn [item-id] (comp/transact! this [(delete-item {:list-id id
                                                                       :item-id item-id})]))
         completed-items (filterv :item/completed? items)
@@ -150,21 +153,12 @@
               (dom/p "Double-click to edit a todo")
               (dom/p "Part of " (dom/a {:href "http://todomvc.com"} "TodoMVC"))))
 
-(defsc Root [this {:keys [main]}]
+(defsc Root [_ {:keys [main]}]
   {:query         [{:main (comp/get-query TodoList)}]
    :initial-state (fn [_] {:main (comp/get-initial-state TodoList {})})}
   (dom/div {}
            (dom/section :.todoapp (ui-todolist main))
            (page-footer)))
-
-(comment
-  (app/current-state app)
-  (comp/get-query Root)
-  (merge/merge-component! app
-                          TodoList {:list/id 1 :list/label "shopping" :list/items [{:item/id         1
-                                                                                    :item/label      "buy milk"
-                                                                                    :item/completed? false}]}
-                          :replace [:main]))
 
 (defn ^:export init
   "Shadow-cljs sets this up to be our entry-point function. See shadow-cljs.edn `:init-fn` in the modules of the main build."
