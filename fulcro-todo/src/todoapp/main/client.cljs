@@ -5,8 +5,6 @@
     [com.fulcrologic.fulcro.dom :as dom]
     [com.fulcrologic.fulcro.dom.events :as events]
     [com.fulcrologic.fulcro.algorithms.tempid :as tmp]
-    [com.fulcrologic.fulcro.algorithms.denormalize :as fdn]
-    [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.fulcro.algorithms.normalized-state :as norm]
     [com.fulcrologic.fulcro.mutations :as mut :refer [defmutation]]))
 
@@ -130,10 +128,9 @@
                            :ui/new-item-text ""})}
   (let [delete-item (fn [item-id] (comp/transact! this [(delete-item {:list-id id
                                                                       :item-id item-id})]))
-        completed-items (filterv :item/completed? items)
         filtered-items (case filter
                          :list.filter/active (filterv (comp not :item/completed?) items)
-                         :list.filter/completed completed-items
+                         :list.filter/completed (filterv :item/completed? items)
                          :list.filter/all items
                          items)]
     (dom/div {}
