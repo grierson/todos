@@ -2,13 +2,14 @@
   (:require
     [com.fulcrologic.fulcro.application :as app]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
+    [com.fulcrologic.fulcro.networking.http-remote :as http]
     [com.fulcrologic.fulcro.dom :as dom]
     [com.fulcrologic.fulcro.dom.events :as events]
     [com.fulcrologic.fulcro.algorithms.tempid :as tmp]
     [com.fulcrologic.fulcro.algorithms.normalized-state :as norm]
     [com.fulcrologic.fulcro.mutations :as mut :refer [defmutation]]))
 
-(defonce app (app/fulcro-app))
+(defonce app (app/fulcro-app {:remotes {:remote (http/fulcro-http-remote {})}}))
 
 (defn add-item-to-list*
   "Add an item's ident onto the end of the given list."
