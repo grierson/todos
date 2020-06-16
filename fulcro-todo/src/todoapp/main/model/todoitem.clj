@@ -31,11 +31,12 @@
                 (get @items id))
 
 (pc/defmutation delete-item [env {:keys [item-id]}]
-                {::pc/params [:item/id]
+                {::pc/sym    `todoapp.main.client/delete-item
+                 ::pc/params [:item/id]
                  ::pc/output []}
-                (do
-                  (log/info item-id)
-                  (swap! items dissoc item-id)))
+                (log/info item-id)
+                (swap! items dissoc item-id)
+                {})
 
 (def resolvers [delete-item
                 list-resolver
