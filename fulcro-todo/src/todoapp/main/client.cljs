@@ -56,7 +56,8 @@
   (action [{:keys [state]}]
           (swap! state (fn [s] (-> s
                                    (norm/remove-ident [:item/id item-id] [:list/id list-id :list/items])
-                                   (update :item/id dissoc item-id))))))
+                                   (update :item/id dissoc item-id)))))
+  (remote [_] true))
 
 (defmutation clear-completed
   "Clear all completed"

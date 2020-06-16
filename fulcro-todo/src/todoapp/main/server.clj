@@ -35,3 +35,6 @@
                     wrap-content-type
                     wrap-not-modified))
 
+
+(comment
+  (async/<!! (parser {} [{[:list/id 1] [:list/id {:list/items [:item/label]}]}])))
