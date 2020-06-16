@@ -7,9 +7,8 @@
     [com.fulcrologic.fulcro.dom.events :as events]
     [com.fulcrologic.fulcro.algorithms.tempid :as tmp]
     [com.fulcrologic.fulcro.algorithms.normalized-state :as norm]
-    [com.fulcrologic.fulcro.mutations :as mut :refer [defmutation]]))
-
-(defonce app (app/fulcro-app {:remotes {:remote (http/fulcro-http-remote {})}}))
+    [com.fulcrologic.fulcro.mutations :as mut :refer [defmutation]]
+    [com.fulcrologic.fulcro.data-fetch :as df]))
 
 (defn add-item-to-list*
   "Add an item's ident onto the end of the given list."
@@ -157,6 +156,10 @@
   (dom/div {}
            (dom/section :.todoapp (ui-todolist main))
            (page-footer)))
+
+(defonce app (app/fulcro-app {:remotes {:remote (http/fulcro-http-remote {})}
+                              :client-did-mount (fn [app]
+                                                  (df/load! app [:list/id 1] TodoList))}))
 
 (defn ^:export init
   "Shadow-cljs sets this up to be our entry-point function. See shadow-cljs.edn `:init-fn` in the modules of the main build."
