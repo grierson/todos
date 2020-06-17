@@ -34,11 +34,26 @@
                 {::pc/sym    `todoapp.main.client/delete-item
                  ::pc/params [:item/id]
                  ::pc/output []}
-                (log/info item-id)
                 (swap! items dissoc item-id)
                 {})
 
+(pc/defmutation toggle-item [env {:item/keys [id]}]
+                {::pc/sym    `todoapp.main.client/toggle-item
+                 ::pc/params [:item/id]
+                 ::pc/output []}
+                (log/info "Toggle item" id)
+                (swap! items update-in [id :item/completed?] not)
+                {})
+
+(pc/defmutation clear-completed [env _]
+                {::pc/sym    `todoapp.main.client/clear-completed
+                 ::pc/output []}
+                (swap! items (fn [db] (into {} (remove #(-> % val :item/completed?)) db)))
+                {})
+
 (def resolvers [delete-item
+                toggle-item
+                clear-completed
                 list-resolver
                 todoitem-resolver
                 all-todoitem-resolver])

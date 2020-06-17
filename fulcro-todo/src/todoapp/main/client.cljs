@@ -39,9 +39,10 @@
 
 (defmutation toggle-item
   "Toggle item to completed status"
-  [{:keys [id]}]
+  [{:item/keys [id]}]
   (action [{:keys [state]}]
-          (swap! state update-in [:item/id id :item/completed?] not)))
+          (swap! state update-in [:item/id id :item/completed?] not))
+  (remote [env] true))
 
 (defmutation set-filter
   "Toggle item to completed status"
@@ -61,10 +62,11 @@
 
 (defmutation clear-completed
   "Clear all completed"
-  [{:keys [id]}]
+  [{:list/keys [id]}]
   (action [{:keys [state]}]
           (let [is-complete? (fn [item-ident] (get-in @state (conj item-ident :item/completed?)))]
-            (swap! state update-in [:list/id id :list/items] (fn [todos] (vec (remove is-complete? todos)))))))
+            (swap! state update-in [:list/id id :list/items] (fn [todos] (vec (remove is-complete? todos))))))
+  (remote [env] true))
 
 (defn trim-text [text]
   "Returns text without surrounding whitespace if not empty, otherwise nil"
@@ -94,16 +96,16 @@
                 (dom/span :.todo-count)
                 (dom/ul :.filters
                         (dom/li (dom/a {:href    "#/"
-                                        :onClick #(comp/transact! component [(set-filter {:list-id id
+                                        :onClick #(comp/transact! component [(set-filter {:list/id id
                                                                                           :filter  :list.filter/all})])} "All"))
                         (dom/li (dom/a {:href    "#/active"
-                                        :onClick #(comp/transact! component [(set-filter {:list-id id
+                                        :onClick #(comp/transact! component [(set-filter {:list/id id
                                                                                           :filter  :list.filter/active})])} "Active"))
                         (dom/li (dom/a {:href    "#/completed"
-                                        :onClick #(comp/transact! component [(set-filter {:list-id id
+                                        :onClick #(comp/transact! component [(set-filter {:list/id id
                                                                                           :filter  :list.filter/completed})])} "Completed")))
                 (dom/button {:className "clear-completed"
-                             :onClick   #(comp/transact! component [(clear-completed {:id id})])} "Clear completed"))))
+                             :onClick   #(comp/transact! component [(clear-completed {:list/id id})])} "Clear completed"))))
 
 (defsc TodoItem [this {:item/keys [id label completed?]} {:keys [delete-item]}]
   {:query [:item/id :item/label :item/completed?]
@@ -112,7 +114,7 @@
           (dom/div :.view {}
                    (dom/input {:type      "checkbox"
                                :className "toggle"
-                               :onChange  (fn [_] (comp/transact! this [(toggle-item {:id id})]))
+                               :onChange  (fn [_] (comp/transact! this [(toggle-item {:item/id id})]))
                                :checked   completed?})
                    (dom/label label)
                    (dom/button :.destroy {:onClick #(delete-item id)}))))
